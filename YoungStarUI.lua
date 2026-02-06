@@ -1,5 +1,4 @@
 --// YoungStar UI Library
-
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
@@ -20,26 +19,82 @@ local THEME = {
 local FONT_MAIN = Enum.Font.Gotham
 local FONT_BOLD = Enum.Font.GothamBold
 
+--// DRAG FUNCTION
+local function MakeDraggable(topbarobject, object)
+	local Dragging = nil
+	local DragInput = nil
+	local DragStart = nil
+	local StartPosition = nil
+
+	local function Update(input)
+		local Delta = input.Position - DragStart
+		local pos = UDim2.new(StartPosition.X.Scale, StartPosition.X.Offset + Delta.X, StartPosition.Y.Scale, StartPosition.Y.Offset + Delta.Y)
+		object.Position = pos
+	end
+
+	topbarobject.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			Dragging = true
+			DragStart = input.Position
+			StartPosition = object.Position
+
+			input.Changed:Connect(function()
+				if input.UserInputState == Enum.UserInputState.End then
+					Dragging = false
+				end
+			end)
+		end
+	end)
+
+	topbarobject.InputChanged:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+			DragInput = input
+		end
+	end)
+
+	UIS.InputChanged:Connect(function(input)
+		if input == DragInput and Dragging then
+			Update(input)
+		end
+	end)
+end
+
 -- =========================
 -- CREATE WINDOW
 -- =========================
 function Library:CreateWindow(titleText)
 	local player = Players.LocalPlayer
 
+	-- Check for existing UI and destroy it to prevent duplicates
+	if player:WaitForChild("PlayerGui"):FindFirstChild("YoungStarUI") then
+		player.PlayerGui.YoungStarUI:Destroy()
+	end
+
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "YoungStarUI"
 	gui.ResetOnSpawn = false
+	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling -- Important for dropdowns
 	gui.Parent = player:WaitForChild("PlayerGui")
 
 	local main = Instance.new("Frame")
-	main.Size = UDim2.new(0, 260, 0, 40)
-	main.Position = UDim2.new(0.5, -130, 0.25, 0)
+	main.Name = "MainFrame"
+	main.Size = UDim2.new(0, 260, 0, 40) -- Initial size (header only)
+	main.Position = UDim2.new(0.5, -130, 0.3, 0)
 	main.BackgroundColor3 = THEME.Background
+	main.BorderSizePixel = 0
+	main.AutomaticSize = Enum.AutomaticSize.Y -- [FIX] This makes the background grow!
+	main.ClipsDescendants = false -- Allow dropdowns to go outside if needed
 	main.Parent = gui
+	
+	-- Apply Drag
+	MakeDraggable(main, main)
+
 	Instance.new("UICorner", main).CornerRadius = UDim.new(0, 8)
 
+	-- Header Elements
 	local title = Instance.new("TextLabel")
-	title.Size = UDim2.new(1, -40, 1, 0)
+	title.Name = "Title"
+	title.Size = UDim2.new(1, -40, 0, 40)
 	title.Position = UDim2.new(0, 10, 0, 0)
 	title.BackgroundTransparency = 1
 	title.Text = titleText or "YoungStar UI"
@@ -50,8 +105,9 @@ function Library:CreateWindow(titleText)
 	title.Parent = main
 
 	local arrow = Instance.new("TextButton")
+	arrow.Name = "ToggleArrow"
 	arrow.Size = UDim2.new(0, 30, 0, 30)
-	arrow.Position = UDim2.new(1, -35, 0.5, -15)
+	arrow.Position = UDim2.new(1, -35, 0, 5)
 	arrow.BackgroundTransparency = 1
 	arrow.Text = "▼"
 	arrow.TextColor3 = THEME.TextMain
@@ -60,22 +116,25 @@ function Library:CreateWindow(titleText)
 	arrow.Parent = main
 
 	local content = Instance.new("Frame")
-	content.Position = UDim2.new(0, 0, 1, 0)
+	content.Name = "ContentFrame"
+	content.Size = UDim2.new(1, 0, 0, 0) -- Start at 0 size
+	content.Position = UDim2.new(0, 0, 0, 40) -- Start below header
 	content.BackgroundColor3 = THEME.Container
+	content.BackgroundTransparency = 1
 	content.Visible = false
 	content.AutomaticSize = Enum.AutomaticSize.Y
 	content.Parent = main
-	Instance.new("UICorner", content).CornerRadius = UDim.new(0, 8)
 
 	local layout = Instance.new("UIListLayout")
 	layout.Padding = UDim.new(0, 6)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Parent = content
 
 	local padding = Instance.new("UIPadding")
 	padding.PaddingLeft = UDim.new(0, 10)
 	padding.PaddingRight = UDim.new(0, 10)
-	padding.PaddingTop = UDim.new(0, 8)
-	padding.PaddingBottom = UDim.new(0, 8)
+	padding.PaddingTop = UDim.new(0, 0)
+	padding.PaddingBottom = UDim.new(0, 10)
 	padding.Parent = content
 
 	arrow.MouseButton1Click:Connect(function()
@@ -107,6 +166,7 @@ function Library:CreateWindow(titleText)
 	-- BUTTON
 	function Window:AddButton(text, callback)
 		local btn = Instance.new("TextButton")
+		btn.Name = "Button"
 		btn.Size = UDim2.new(1, 0, 0, 36)
 		btn.BackgroundColor3 = THEME.Container
 		btn.Text = text
@@ -123,9 +183,10 @@ function Library:CreateWindow(titleText)
 		end)
 	end
 
-	-- TOGGLE (UPGRADED)
+	-- TOGGLE
 	function Window:AddToggle(text, callback)
 		local frame = Instance.new("Frame")
+		frame.Name = "ToggleFrame"
 		frame.Size = UDim2.new(1, 0, 0, 36)
 		frame.BackgroundTransparency = 1
 		frame.Parent = content
@@ -155,23 +216,30 @@ function Library:CreateWindow(titleText)
 		Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
 
 		local state = false
-		toggle.InputBegan:Connect(function(i)
-			if i.UserInputType == Enum.UserInputType.MouseButton1 then
-				state = not state
-				TweenService:Create(toggle, TweenInfo.new(0.15), {
-					BackgroundColor3 = state and THEME.Accent or THEME.Stroke
-				}):Play()
-				TweenService:Create(knob, TweenInfo.new(0.15), {
-					Position = state and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
-				}):Play()
-				if callback then callback(state) end
-			end
-		end)
+		local function toggleLogic()
+			state = not state
+			TweenService:Create(toggle, TweenInfo.new(0.15), {
+				BackgroundColor3 = state and THEME.Accent or THEME.Stroke
+			}):Play()
+			TweenService:Create(knob, TweenInfo.new(0.15), {
+				Position = state and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
+			}):Play()
+			if callback then callback(state) end
+		end
+
+		-- Make clicking the text also toggle
+		local trigger = Instance.new("TextButton")
+		trigger.Size = UDim2.new(1, 0, 1, 0)
+		trigger.BackgroundTransparency = 1
+		trigger.Text = ""
+		trigger.Parent = frame
+		trigger.MouseButton1Click:Connect(toggleLogic)
 	end
 
-	-- SLIDER (UPGRADED)
+	-- SLIDER
 	function Window:AddSlider(text, min, max, callback)
 		local frame = Instance.new("Frame")
+		frame.Name = "SliderFrame"
 		frame.Size = UDim2.new(1, 0, 0, 48)
 		frame.BackgroundTransparency = 1
 		frame.Parent = content
@@ -209,6 +277,12 @@ function Library:CreateWindow(titleText)
 		fill.Parent = bar
 		Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
 
+		local trigger = Instance.new("TextButton")
+		trigger.Size = UDim2.new(1, 0, 1, 0)
+		trigger.BackgroundTransparency = 1
+		trigger.Text = ""
+		trigger.Parent = bar
+
 		local dragging = false
 
 		local function update(input)
@@ -219,36 +293,40 @@ function Library:CreateWindow(titleText)
 			if callback then callback(value) end
 		end
 
-		bar.InputBegan:Connect(function(i)
-			if i.UserInputType == Enum.UserInputType.MouseButton1 then
+		trigger.InputBegan:Connect(function(i)
+			if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
 				dragging = true
 				update(i)
 			end
 		end)
 
 		UIS.InputChanged:Connect(function(i)
-			if dragging then update(i) end
+			if dragging and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
+				update(i)
+			end
 		end)
 
-		UIS.InputEnded:Connect(function()
-			dragging = false
+		UIS.InputEnded:Connect(function(i)
+			if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+				dragging = false
+			end
 		end)
 	end
 
-	-- DROPDOWN (UPDATED)
+	-- DROPDOWN
 	function Window:AddDropdown(text, options, callback)
 		local holder = Instance.new("Frame")
+		holder.Name = "DropdownHolder"
 		holder.Size = UDim2.new(1, 0, 0, 35)
 		holder.BackgroundTransparency = 1
 		holder.Parent = content
-		holder.ZIndex = 1
+		holder.ZIndex = 5 -- High ZIndex to sit on top of things below
 
 		local selected = options[1]
 		local open = false
-		local selectedButton
 
-		-- Main button
 		local btn = Instance.new("TextButton")
+		btn.Name = "DropdownBtn"
 		btn.Size = UDim2.new(1, 0, 0, 35)
 		btn.BackgroundColor3 = THEME.Container
 		btn.Text = text .. ": " .. selected
@@ -256,19 +334,17 @@ function Library:CreateWindow(titleText)
 		btn.Font = FONT_MAIN
 		btn.TextSize = 14
 		btn.Parent = holder
-		btn.ZIndex = 2
-		btn.Active = true
+		btn.ZIndex = 6
 		Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
 
-		-- Dropdown list
 		local list = Instance.new("Frame")
+		list.Name = "List"
 		list.Size = UDim2.new(1, 0, 0, #options * 30)
 		list.Position = UDim2.new(0, 0, 1, 6)
 		list.BackgroundColor3 = THEME.Container
 		list.Visible = false
 		list.Parent = holder
-		list.ZIndex = 3
-		list.Active = true
+		list.ZIndex = 10 -- Highest ZIndex
 		Instance.new("UICorner", list).CornerRadius = UDim.new(0, 6)
 
 		local lay = Instance.new("UIListLayout")
@@ -283,40 +359,14 @@ function Library:CreateWindow(titleText)
 			o.Font = FONT_MAIN
 			o.TextSize = 14
 			o.Parent = list
-			o.ZIndex = 4
-			o.Active = true
+			o.ZIndex = 11
 
-			-- Hover effect
-			o.MouseEnter:Connect(function()
-				if selectedButton ~= o then
-					o.BackgroundColor3 = THEME.Stroke
-				end
-			end)
-
-			o.MouseLeave:Connect(function()
-				if selectedButton ~= o then
-					o.BackgroundColor3 = THEME.Container
-				end
-			end)
-
-			-- Selection logic
 			o.MouseButton1Click:Connect(function()
-				if selectedButton then
-					selectedButton.BackgroundColor3 = THEME.Container
-				end
-
-				selectedButton = o
 				selected = opt
-
-				o.BackgroundColor3 = THEME.Accent
 				btn.Text = text .. ": " .. opt
-
 				list.Visible = false
 				open = false
-
-				if callback then
-					callback(opt)
-				end
+				if callback then callback(opt) end
 			end)
 		end
 
