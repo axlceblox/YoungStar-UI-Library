@@ -60,7 +60,6 @@ function Library:CreateWindow(titleText)
 	arrow.Parent = main
 
 	local content = Instance.new("Frame")
-	content.Size = UDim2.new(1, 0, 0, 0)
 	content.Position = UDim2.new(0, 0, 1, 0)
 	content.BackgroundColor3 = THEME.Container
 	content.Visible = false
@@ -85,26 +84,30 @@ function Library:CreateWindow(titleText)
 	end)
 
 	-- =========================
-	-- CONTROLS
+	-- HELPERS
 	-- =========================
-	local Window = {}
-
-	local function hover(btn)
+	local function hover(btn, base)
 		btn.MouseEnter:Connect(function()
-			TweenService:Create(btn, TweenInfo.new(0.15), {
+			TweenService:Create(btn, TweenInfo.new(0.12), {
 				BackgroundColor3 = THEME.Stroke
 			}):Play()
 		end)
 		btn.MouseLeave:Connect(function()
-			TweenService:Create(btn, TweenInfo.new(0.15), {
-				BackgroundColor3 = THEME.Container
+			TweenService:Create(btn, TweenInfo.new(0.12), {
+				BackgroundColor3 = base
 			}):Play()
 		end)
 	end
 
+	-- =========================
+	-- CONTROLS
+	-- =========================
+	local Window = {}
+
+	-- BUTTON
 	function Window:AddButton(text, callback)
 		local btn = Instance.new("TextButton")
-		btn.Size = UDim2.new(1, 0, 0, 35)
+		btn.Size = UDim2.new(1, 0, 0, 36)
 		btn.BackgroundColor3 = THEME.Container
 		btn.Text = text
 		btn.TextColor3 = THEME.TextMain
@@ -113,16 +116,129 @@ function Library:CreateWindow(titleText)
 		btn.Parent = content
 		Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
 
-		hover(btn)
+		hover(btn, THEME.Container)
 
 		btn.MouseButton1Click:Connect(function()
 			if callback then callback() end
 		end)
 	end
 
+	-- TOGGLE (UPGRADED)
+	function Window:AddToggle(text, callback)
+		local frame = Instance.new("Frame")
+		frame.Size = UDim2.new(1, 0, 0, 36)
+		frame.BackgroundTransparency = 1
+		frame.Parent = content
+
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.new(1, -50, 1, 0)
+		label.BackgroundTransparency = 1
+		label.Text = text
+		label.TextColor3 = THEME.TextMain
+		label.Font = FONT_MAIN
+		label.TextSize = 14
+		label.TextXAlignment = Enum.TextXAlignment.Left
+		label.Parent = frame
+
+		local toggle = Instance.new("Frame")
+		toggle.Size = UDim2.new(0, 40, 0, 20)
+		toggle.Position = UDim2.new(1, -40, 0.5, -10)
+		toggle.BackgroundColor3 = THEME.Stroke
+		toggle.Parent = frame
+		Instance.new("UICorner", toggle).CornerRadius = UDim.new(1, 0)
+
+		local knob = Instance.new("Frame")
+		knob.Size = UDim2.new(0, 16, 0, 16)
+		knob.Position = UDim2.new(0, 2, 0.5, -8)
+		knob.BackgroundColor3 = THEME.TextMain
+		knob.Parent = toggle
+		Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
+
+		local state = false
+		toggle.InputBegan:Connect(function(i)
+			if i.UserInputType == Enum.UserInputType.MouseButton1 then
+				state = not state
+				TweenService:Create(toggle, TweenInfo.new(0.15), {
+					BackgroundColor3 = state and THEME.Accent or THEME.Stroke
+				}):Play()
+				TweenService:Create(knob, TweenInfo.new(0.15), {
+					Position = state and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
+				}):Play()
+				if callback then callback(state) end
+			end
+		end)
+	end
+
+	-- SLIDER (UPGRADED)
+	function Window:AddSlider(text, min, max, callback)
+		local frame = Instance.new("Frame")
+		frame.Size = UDim2.new(1, 0, 0, 48)
+		frame.BackgroundTransparency = 1
+		frame.Parent = content
+
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.new(1, 0, 0, 18)
+		label.BackgroundTransparency = 1
+		label.Text = text
+		label.TextColor3 = THEME.TextMain
+		label.Font = FONT_MAIN
+		label.TextSize = 14
+		label.TextXAlignment = Enum.TextXAlignment.Left
+		label.Parent = frame
+
+		local valueLabel = Instance.new("TextLabel")
+		valueLabel.Size = UDim2.new(0, 40, 0, 18)
+		valueLabel.Position = UDim2.new(1, -40, 0, 0)
+		valueLabel.BackgroundTransparency = 1
+		valueLabel.TextColor3 = THEME.TextDim
+		valueLabel.Font = FONT_MAIN
+		valueLabel.TextSize = 13
+		valueLabel.TextXAlignment = Enum.TextXAlignment.Right
+		valueLabel.Parent = frame
+
+		local bar = Instance.new("Frame")
+		bar.Size = UDim2.new(1, 0, 0, 8)
+		bar.Position = UDim2.new(0, 0, 0, 30)
+		bar.BackgroundColor3 = THEME.Stroke
+		bar.Parent = frame
+		Instance.new("UICorner", bar).CornerRadius = UDim.new(1, 0)
+
+		local fill = Instance.new("Frame")
+		fill.Size = UDim2.new(0, 0, 1, 0)
+		fill.BackgroundColor3 = THEME.Accent
+		fill.Parent = bar
+		Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
+
+		local dragging = false
+
+		local function update(input)
+			local percent = math.clamp((input.Position.X - bar.AbsolutePosition.X) / bar.AbsoluteSize.X, 0, 1)
+			local value = math.floor(min + (max - min) * percent)
+			fill.Size = UDim2.new(percent, 0, 1, 0)
+			valueLabel.Text = tostring(value)
+			if callback then callback(value) end
+		end
+
+		bar.InputBegan:Connect(function(i)
+			if i.UserInputType == Enum.UserInputType.MouseButton1 then
+				dragging = true
+				update(i)
+			end
+		end)
+
+		UIS.InputChanged:Connect(function(i)
+			if dragging then update(i) end
+		end)
+
+		UIS.InputEnded:Connect(function()
+			dragging = false
+		end)
+	end
+
+	-- DROPDOWN (ALIGNED FIX)
 	function Window:AddDropdown(text, options, callback)
 		local holder = Instance.new("Frame")
-		holder.Size = UDim2.new(1, 0, 0, 35)
+		holder.Size = UDim2.new(1, 0, 0, 36)
 		holder.BackgroundTransparency = 1
 		holder.AutomaticSize = Enum.AutomaticSize.Y
 		holder.Parent = content
@@ -131,7 +247,7 @@ function Library:CreateWindow(titleText)
 		local open = false
 
 		local btn = Instance.new("TextButton")
-		btn.Size = UDim2.new(1, 0, 0, 35)
+		btn.Size = UDim2.new(1, 0, 0, 36)
 		btn.BackgroundColor3 = THEME.Container
 		btn.Text = text .. ": " .. selected
 		btn.TextColor3 = THEME.TextMain
@@ -140,7 +256,7 @@ function Library:CreateWindow(titleText)
 		btn.Parent = holder
 		Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
 
-		hover(btn)
+		hover(btn, THEME.Container)
 
 		local list = Instance.new("Frame")
 		list.BackgroundColor3 = THEME.Background
@@ -148,11 +264,6 @@ function Library:CreateWindow(titleText)
 		list.AutomaticSize = Enum.AutomaticSize.Y
 		list.Parent = holder
 		Instance.new("UICorner", list).CornerRadius = UDim.new(0, 6)
-
-		local lpad = Instance.new("UIPadding")
-		lpad.PaddingTop = UDim.new(0, 4)
-		lpad.PaddingBottom = UDim.new(0, 4)
-		lpad.Parent = list
 
 		local lay = Instance.new("UIListLayout")
 		lay.Parent = list
@@ -167,7 +278,7 @@ function Library:CreateWindow(titleText)
 			o.TextSize = 14
 			o.Parent = list
 
-			hover(o)
+			hover(o, THEME.Container)
 
 			o.MouseButton1Click:Connect(function()
 				selected = opt
@@ -182,20 +293,6 @@ function Library:CreateWindow(titleText)
 			open = not open
 			list.Visible = open
 		end)
-	end
-
-	function Window:SetInfo(enabled, text)
-		if enabled then
-			local info = Instance.new("TextLabel")
-			info.Size = UDim2.new(1, 0, 0, 26)
-			info.BackgroundTransparency = 1
-			info.TextWrapped = true
-			info.Text = tostring(text)
-			info.TextColor3 = THEME.TextDim
-			info.Font = FONT_MAIN
-			info.TextSize = 12
-			info.Parent = content
-		end
 	end
 
 	return Window
