@@ -65,7 +65,6 @@ end
 function Library:CreateWindow(titleText)
 	local player = Players.LocalPlayer
 
-	-- Check for existing UI and destroy it to prevent duplicates
 	if player:WaitForChild("PlayerGui"):FindFirstChild("YoungStarUI") then
 		player.PlayerGui.YoungStarUI:Destroy()
 	end
@@ -73,25 +72,23 @@ function Library:CreateWindow(titleText)
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "YoungStarUI"
 	gui.ResetOnSpawn = false
-	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling -- Important for dropdowns
 	gui.Parent = player:WaitForChild("PlayerGui")
 
 	local main = Instance.new("Frame")
 	main.Name = "MainFrame"
-	main.Size = UDim2.new(0, 260, 0, 40) -- Initial size (header only)
+	main.Size = UDim2.new(0, 260, 0, 40)
 	main.Position = UDim2.new(0.5, -130, 0.3, 0)
 	main.BackgroundColor3 = THEME.Background
 	main.BorderSizePixel = 0
-	main.AutomaticSize = Enum.AutomaticSize.Y -- [FIX] This makes the background grow!
-	main.ClipsDescendants = false -- Allow dropdowns to go outside if needed
+	-- AutomaticSize makes the window grow when the dropdown pushes items down
+	main.AutomaticSize = Enum.AutomaticSize.Y 
+	main.ClipsDescendants = true -- Keeps everything neatly inside the rounded corners
 	main.Parent = gui
 	
-	-- Apply Drag
 	MakeDraggable(main, main)
-
 	Instance.new("UICorner", main).CornerRadius = UDim.new(0, 8)
 
-	-- Header Elements
+	-- Header
 	local title = Instance.new("TextLabel")
 	title.Name = "Title"
 	title.Size = UDim2.new(1, -40, 0, 40)
@@ -117,8 +114,8 @@ function Library:CreateWindow(titleText)
 
 	local content = Instance.new("Frame")
 	content.Name = "ContentFrame"
-	content.Size = UDim2.new(1, 0, 0, 0) -- Start at 0 size
-	content.Position = UDim2.new(0, 0, 0, 40) -- Start below header
+	content.Size = UDim2.new(1, 0, 0, 0)
+	content.Position = UDim2.new(0, 0, 0, 40)
 	content.BackgroundColor3 = THEME.Container
 	content.BackgroundTransparency = 1
 	content.Visible = false
@@ -142,19 +139,12 @@ function Library:CreateWindow(titleText)
 		arrow.Text = content.Visible and "▲" or "▼"
 	end)
 
-	-- =========================
-	-- HELPERS
-	-- =========================
 	local function hover(btn, base)
 		btn.MouseEnter:Connect(function()
-			TweenService:Create(btn, TweenInfo.new(0.12), {
-				BackgroundColor3 = THEME.Stroke
-			}):Play()
+			TweenService:Create(btn, TweenInfo.new(0.12), {BackgroundColor3 = THEME.Stroke}):Play()
 		end)
 		btn.MouseLeave:Connect(function()
-			TweenService:Create(btn, TweenInfo.new(0.12), {
-				BackgroundColor3 = base
-			}):Play()
+			TweenService:Create(btn, TweenInfo.new(0.12), {BackgroundColor3 = base}):Play()
 		end)
 	end
 
@@ -163,7 +153,6 @@ function Library:CreateWindow(titleText)
 	-- =========================
 	local Window = {}
 
-	-- BUTTON
 	function Window:AddButton(text, callback)
 		local btn = Instance.new("TextButton")
 		btn.Name = "Button"
@@ -175,15 +164,10 @@ function Library:CreateWindow(titleText)
 		btn.TextSize = 14
 		btn.Parent = content
 		Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
-
 		hover(btn, THEME.Container)
-
-		btn.MouseButton1Click:Connect(function()
-			if callback then callback() end
-		end)
+		btn.MouseButton1Click:Connect(function() if callback then callback() end end)
 	end
 
-	-- TOGGLE
 	function Window:AddToggle(text, callback)
 		local frame = Instance.new("Frame")
 		frame.Name = "ToggleFrame"
@@ -218,16 +202,11 @@ function Library:CreateWindow(titleText)
 		local state = false
 		local function toggleLogic()
 			state = not state
-			TweenService:Create(toggle, TweenInfo.new(0.15), {
-				BackgroundColor3 = state and THEME.Accent or THEME.Stroke
-			}):Play()
-			TweenService:Create(knob, TweenInfo.new(0.15), {
-				Position = state and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
-			}):Play()
+			TweenService:Create(toggle, TweenInfo.new(0.15), {BackgroundColor3 = state and THEME.Accent or THEME.Stroke}):Play()
+			TweenService:Create(knob, TweenInfo.new(0.15), {Position = state and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)}):Play()
 			if callback then callback(state) end
 		end
 
-		-- Make clicking the text also toggle
 		local trigger = Instance.new("TextButton")
 		trigger.Size = UDim2.new(1, 0, 1, 0)
 		trigger.BackgroundTransparency = 1
@@ -236,7 +215,6 @@ function Library:CreateWindow(titleText)
 		trigger.MouseButton1Click:Connect(toggleLogic)
 	end
 
-	-- SLIDER
 	function Window:AddSlider(text, min, max, callback)
 		local frame = Instance.new("Frame")
 		frame.Name = "SliderFrame"
@@ -284,8 +262,8 @@ function Library:CreateWindow(titleText)
 		trigger.Parent = bar
 
 		local dragging = false
-
 		local function update(input)
+			if bar.AbsoluteSize.X == 0 then return end
 			local percent = math.clamp((input.Position.X - bar.AbsolutePosition.X) / bar.AbsoluteSize.X, 0, 1)
 			local value = math.floor(min + (max - min) * percent)
 			fill.Size = UDim2.new(percent, 0, 1, 0)
@@ -299,13 +277,11 @@ function Library:CreateWindow(titleText)
 				update(i)
 			end
 		end)
-
 		UIS.InputChanged:Connect(function(i)
 			if dragging and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
 				update(i)
 			end
 		end)
-
 		UIS.InputEnded:Connect(function(i)
 			if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
 				dragging = false
@@ -313,18 +289,28 @@ function Library:CreateWindow(titleText)
 		end)
 	end
 
-	-- DROPDOWN
+	-- ==========================================
+	-- NEW DROPDOWN (Accordion Style)
+	-- ==========================================
 	function Window:AddDropdown(text, options, callback)
+		-- The Holder now grows automatically!
 		local holder = Instance.new("Frame")
 		holder.Name = "DropdownHolder"
-		holder.Size = UDim2.new(1, 0, 0, 35)
+		holder.Size = UDim2.new(1, 0, 0, 35) -- Default size (closed)
 		holder.BackgroundTransparency = 1
+		holder.AutomaticSize = Enum.AutomaticSize.Y -- THIS IS THE FIX
 		holder.Parent = content
-		holder.ZIndex = 5 -- High ZIndex to sit on top of things below
+
+		-- ListLayout inside the holder stacks the button and the list
+		local holderLayout = Instance.new("UIListLayout")
+		holderLayout.SortOrder = Enum.SortOrder.LayoutOrder
+		holderLayout.Padding = UDim.new(0, 5)
+		holderLayout.Parent = holder
 
 		local selected = options[1]
 		local open = false
 
+		-- Main Button
 		local btn = Instance.new("TextButton")
 		btn.Name = "DropdownBtn"
 		btn.Size = UDim2.new(1, 0, 0, 35)
@@ -333,46 +319,58 @@ function Library:CreateWindow(titleText)
 		btn.TextColor3 = THEME.TextMain
 		btn.Font = FONT_MAIN
 		btn.TextSize = 14
+		btn.LayoutOrder = 1
 		btn.Parent = holder
-		btn.ZIndex = 6
 		Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
 
+		-- The List (Starts hidden)
 		local list = Instance.new("Frame")
 		list.Name = "List"
-		list.Size = UDim2.new(1, 0, 0, #options * 30)
-		list.Position = UDim2.new(0, 0, 1, 6)
-		list.BackgroundColor3 = THEME.Container
+		list.Size = UDim2.new(1, 0, 0, 0)
+		list.BackgroundColor3 = Color3.fromRGB(32, 32, 36) -- Slightly darker
 		list.Visible = false
+		list.AutomaticSize = Enum.AutomaticSize.Y
+		list.LayoutOrder = 2
 		list.Parent = holder
-		list.ZIndex = 10 -- Highest ZIndex
 		Instance.new("UICorner", list).CornerRadius = UDim.new(0, 6)
 
-		local lay = Instance.new("UIListLayout")
-		lay.Parent = list
+		local listLayout = Instance.new("UIListLayout")
+		listLayout.Padding = UDim.new(0, 2)
+		listLayout.Parent = list
+		
+		local listPad = Instance.new("UIPadding")
+		listPad.PaddingTop = UDim.new(0, 5)
+		listPad.PaddingBottom = UDim.new(0, 5)
+		listPad.PaddingLeft = UDim.new(0, 5)
+		listPad.PaddingRight = UDim.new(0, 5)
+		listPad.Parent = list
 
 		for _, opt in ipairs(options) do
 			local o = Instance.new("TextButton")
 			o.Size = UDim2.new(1, 0, 0, 30)
-			o.BackgroundColor3 = THEME.Container
+			o.BackgroundTransparency = 1
 			o.Text = tostring(opt)
-			o.TextColor3 = THEME.TextMain
+			o.TextColor3 = THEME.TextDim
 			o.Font = FONT_MAIN
 			o.TextSize = 14
 			o.Parent = list
-			o.ZIndex = 11
+
+			o.MouseEnter:Connect(function() o.TextColor3 = THEME.Accent end)
+			o.MouseLeave:Connect(function() o.TextColor3 = THEME.TextDim end)
 
 			o.MouseButton1Click:Connect(function()
 				selected = opt
 				btn.Text = text .. ": " .. opt
-				list.Visible = false
-				open = false
 				if callback then callback(opt) end
+				-- Close Logic
+				open = false
+				list.Visible = false
 			end)
 		end
 
 		btn.MouseButton1Click:Connect(function()
 			open = not open
-			list.Visible = open
+			list.Visible = open -- Toggling visibility triggers AutomaticSize to resize the window
 		end)
 	end
 
