@@ -235,34 +235,40 @@ function Library:CreateWindow(titleText)
 		end)
 	end
 
-	-- DROPDOWN (ALIGNED FIX)
+	-- DROPDOWN (UPDATED)
 	function Window:AddDropdown(text, options, callback)
 		local holder = Instance.new("Frame")
-		holder.Size = UDim2.new(1, 0, 0, 36)
+		holder.Size = UDim2.new(1, 0, 0, 35)
 		holder.BackgroundTransparency = 1
-		holder.AutomaticSize = Enum.AutomaticSize.Y
 		holder.Parent = content
+		holder.ZIndex = 1
 
 		local selected = options[1]
 		local open = false
+		local selectedButton
 
+		-- Main button
 		local btn = Instance.new("TextButton")
-		btn.Size = UDim2.new(1, 0, 0, 36)
+		btn.Size = UDim2.new(1, 0, 0, 35)
 		btn.BackgroundColor3 = THEME.Container
 		btn.Text = text .. ": " .. selected
 		btn.TextColor3 = THEME.TextMain
 		btn.Font = FONT_MAIN
 		btn.TextSize = 14
 		btn.Parent = holder
+		btn.ZIndex = 2
+		btn.Active = true
 		Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
 
-		hover(btn, THEME.Container)
-
+		-- Dropdown list
 		local list = Instance.new("Frame")
-		list.BackgroundColor3 = THEME.Background
+		list.Size = UDim2.new(1, 0, 0, #options * 30)
+		list.Position = UDim2.new(0, 0, 1, 6)
+		list.BackgroundColor3 = THEME.Container
 		list.Visible = false
-		list.AutomaticSize = Enum.AutomaticSize.Y
 		list.Parent = holder
+		list.ZIndex = 3
+		list.Active = true
 		Instance.new("UICorner", list).CornerRadius = UDim.new(0, 6)
 
 		local lay = Instance.new("UIListLayout")
@@ -273,19 +279,44 @@ function Library:CreateWindow(titleText)
 			o.Size = UDim2.new(1, 0, 0, 30)
 			o.BackgroundColor3 = THEME.Container
 			o.Text = tostring(opt)
-			o.TextColor3 = THEME.TextDim
+			o.TextColor3 = THEME.TextMain
 			o.Font = FONT_MAIN
 			o.TextSize = 14
 			o.Parent = list
+			o.ZIndex = 4
+			o.Active = true
 
-			hover(o, THEME.Container)
+			-- Hover effect
+			o.MouseEnter:Connect(function()
+				if selectedButton ~= o then
+					o.BackgroundColor3 = THEME.Stroke
+				end
+			end)
 
+			o.MouseLeave:Connect(function()
+				if selectedButton ~= o then
+					o.BackgroundColor3 = THEME.Container
+				end
+			end)
+
+			-- Selection logic
 			o.MouseButton1Click:Connect(function()
+				if selectedButton then
+					selectedButton.BackgroundColor3 = THEME.Container
+				end
+
+				selectedButton = o
 				selected = opt
+
+				o.BackgroundColor3 = THEME.Accent
 				btn.Text = text .. ": " .. opt
+
 				list.Visible = false
 				open = false
-				if callback then callback(opt) end
+
+				if callback then
+					callback(opt)
+				end
 			end)
 		end
 
@@ -299,3 +330,4 @@ function Library:CreateWindow(titleText)
 end
 
 return Library
+
